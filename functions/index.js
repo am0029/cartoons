@@ -1,20 +1,29 @@
-export async function onRequest(context) {
+exports.handler = async (event, context) => {
   const targetHost = 'previous-ag-digidanesh123-01555492.koyeb.app';
   
-  const url = new URL(context.request.url);
+  const url = new URL(event.rawUrl);
   url.host = targetHost;
   url.protocol = 'https:';
   
-  if (url.pathname === '/') url.pathname = '/chat';
+  // Ensure path is /chat for Koyeb
+  if (url.pathname === '/') {
+    url.pathname = '/chat';
+  }
 
-  const newHeaders = new Headers(context.request.headers);
-  newHeaders.set('Host', targetHost);
-
-  const newRequest = new Request(url.toString(), {
-    method: context.request.method,
-    headers: newHeaders,
-    body: context.request.body,
+  // Forward request to Koyeb
+  const response = await fetch(url.toString(), {
+    method: event.httpMethod,
+    headers: {
+      ...event.headers,
+      'Host': targetHost,
+    },
+    body: event.body,
   });
 
-  return fetch(newRequest);
-}
+  return {
+    statusCode: response.status,
+    headers: Object.fromEntries(response.headers),
+    body: await response.text(),
+    isBase64Encoded: false,
+  };
+};
